@@ -7,15 +7,13 @@
 from ps1_partition import get_partitions
 import time
 
-#================================
+# ================================
 # Part A: Transporting Space Cows
-#================================
+# ================================
+
 
 # Problem 1
-import re
-
-
-def load_cows(filename='ps1_cow_data.txt'):
+def load_cows(filename):
     """
     Read the contents of the given file.  Assumes the file contents contain
     data in the form of comma-separated cow name, weight pairs, and return a
@@ -27,8 +25,12 @@ def load_cows(filename='ps1_cow_data.txt'):
     Returns:
     a dictionary of cow name (string), weight (int) pairs
     """
+    import re
+
     file = open(filename)
+
     arr = re.split('[,\n]', file.read())
+
     file.close()
 
     cows = {}
@@ -63,42 +65,44 @@ def greedy_cow_transport(cows, limit=10):
     transported on a particular trip and the overall list containing all the
     trips
     """
+    import operator
 
-    trips = []
-    filtered_cows = filter(lambda name: cows[name] <= limit, cows)
-    new_cows = sorted(filtered_cows, key=cows.get, reverse=True)
+    totalTrips = []
+    sorted_cows = sorted(
+        [(name, weight)
+         for name, weight in cows.items()
+         if cows[name] <= limit],
+        key=operator.itemgetter(1),
+        reverse=True
+    )
 
-    def greedy_iter():
-        current_trip = []
-        avail = limit
+    repeat = True
+    while repeat:
+        currentTrip = []
+        currentTotal = 0
 
-        for name in new_cows:
-            cow_weight = cows[name]
-            if cow_weight <= avail:
-                current_trip.append(name)
-                avail -= cow_weight
-            elif avail == 0:
-                break
+        for name, weight in sorted_cows:
+            if currentTotal+weight <= limit:
+                currentTrip.append(name)
+                currentTotal += weight
 
-        for name in current_trip:
-            new_cows.remove(name)
+        for name in currentTrip:
+            cow = (name, cows[name])
+            sorted_cows.remove(cow)
 
-        trips.append(current_trip[:])
+        totalTrips.append(currentTrip)
+        repeat = len(sorted_cows) > 0
 
-        if len(new_cows) > 0:
-            greedy_iter()
-
-    greedy_iter()
-    return trips
+    return totalTrips
 
 
-# Problem 3d
+# Problem 3
 def brute_force_cow_transport(cows, limit=10):
     """
     Finds the allocation of cows that minimizes the number of spaceship trips
     via brute force.  The brute force algorithm should follow the following method:
 
-    1. Enumerate all possible ways that the cows can be divided into separate trips
+    1. Enumerate all possible ways that the cows can be divided into separate trips 
         Use the given get_partitions function in ps1_partition.py to help you!
     2. Select the allocation that minimizes the number of trips without making any trip
         that does not obey the weight limitation
@@ -115,30 +119,25 @@ def brute_force_cow_transport(cows, limit=10):
     trips
     """
 
-    partitions = get_partitions(cows)
-    best_partition = None
+    for partition in sorted(get_partitions(cows), key=len):
 
-    for trips in partitions:
-        for trip in trips:
-            can_accommodate = True
-            avail = limit
-            for name in trip:
-                cow_weight = cows[name]
+        exceed = False
+        for trip in partition:
 
-                if cow_weight > avail:
-                    can_accommodate = False
+            trip_weight = 0
+            for cow in trip:
+                if trip_weight+cows[cow] > limit:
+                    exceed = True
                     break
-                else:
-                    avail -= cow_weight
+                trip_weight += cows[cow]
 
-            if can_accommodate is False:
+            if exceed:
                 break
 
-        if can_accommodate is True:
-            best_partition = trips
-            break
+        if not exceed:
+            return partition
 
-    return best_partition
+    return best_trips
 
 
 # Problem 4
@@ -155,16 +154,46 @@ def compare_cow_transport_algorithms():
     Returns:
     Does not return anything.
     """
-    cows = load_cows()
+    cows = load_cows(filename='ps1_cow_data.txt')
 
     start = time.time()
-    greedy_cow_transport(cows)
+    greedy_result = greedy_cow_transport(cows)
     end = time.time()
 
-    print('greedy_cow_transport:', end - start)
+    greedy_time = end - start
 
+    #
     start = time.time()
-    brute_force_cow_transport(cows)
+    brute_force_result = brute_force_cow_transport(cows)
     end = time.time()
 
-    print('brute_force_cow_transport:', end - start)
+    brute_force_time = end - start
+
+    print("Input:", cows)
+
+    print("Greedy:")
+    print(" - result", greedy_result)
+    print(" - time", greedy_time)
+
+    print("Brute force:")
+    print(" - result", brute_force_result)
+    print(" - time", brute_force_time)
+
+
+compare_cow_transport_algorithms()
+
+
+# Problem 5
+# Answer the following questions.
+
+# 1. What were your results from compare_cow_transport_algorithms? Which algorithm runs faster? Why?
+# Answer:
+    # Comparing the greedy and brute force algorithms, we see a lot of difference, brute force run much slower, because have to enumerate all possibilities before choose the best one.
+
+# 2. Does the greedy algorithm return the optimal solution? Why/why not?
+# Answer:
+    # Not it doesn't, because greedy is really greedy, it uses the first optimal solution that finds and does not try other possibilities.
+
+# 3. Does the brute force algorithm return the optimal solution? Why/why not?
+# Answer:
+    # Yes of course, brute force algorithm always will return one of the optimal solutions, if has more than one and the reason is, because the algorithm will generate every possible outcome before decide which one is optimal.
